@@ -28,7 +28,7 @@ generate_repository_entry() {
         "display_name": "$FRIENDLY_NAME",
         "description": "$DESCRIPTION",
         "image": {
-            "repo": "$IMAGE",
+            "repo": "$USER/$NAME",
             "tags": {
                 "$TAG": "$TAG"
             },
@@ -64,5 +64,5 @@ else
     fi
 
     generate_repository_entry
-    docker cp out/$NAME/.reg/etc/repository.json roon-extension-manager:/home/node/.rem/repos/
+    docker cp out/$NAME/.reg/etc/repository.json roon-extension-manager:/home/node/.rem/repos/$NAME.json
 fi
