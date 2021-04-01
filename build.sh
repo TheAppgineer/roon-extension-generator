@@ -50,6 +50,11 @@ if [ ! -d "out/$NAME" ]; then
     exit 1
 fi
 
+if [ ! -f "out/$NAME/Dockerfile" ]; then
+    echo There is no Dockerfile available for $NAME, generate the extension first
+    exit 1
+fi
+
 mkdir -p out/$NAME/.reg/{bin,etc}
 
 if [ "$USER" = "" ]; then
@@ -64,5 +69,14 @@ else
     fi
 
     generate_repository_entry
-    docker cp out/$NAME/.reg/etc/repository.json roon-extension-manager:/home/node/.rem/repos/$NAME.json
+
+    docker container inspect roon-extension-manager > /dev/null 2>&1
+
+    if [ $? -eq 0 ]; then
+        docker exec roon-extension-manager mkdir -p /home/node/.rem/repos
+        docker cp out/$NAME/.reg/etc/repository.json roon-extension-manager:/home/node/.rem/repos/$NAME.json
+        docker restart roon-extension-manager > /dev/null 2>&1
+    else
+        echo "Warning: No Extension Manager found, no repository file copied"
+    fi
 fi
