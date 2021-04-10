@@ -94,14 +94,17 @@ EOF
 generate_dockerfile() {
     echo Generating Dockerfile
     cat << EOF > out/$NAME/Dockerfile
-# Use an official node runtime as a parent image
-FROM node:12.16.3-alpine
+ARG build_arch=amd64
 
-COPY $MAIN_FILE package.json LICENSE /home/node/
+FROM multiarch/alpine:\${build_arch}-v3.12
+
+RUN addgroup -g 1000 node && adduser -u 1000 -G node -s /bin/sh -D node && apk add --no-cache nodejs
 
 WORKDIR /home/node
 
-RUN apk add --no-cache git && npm install && apk del git
+COPY $MAIN_FILE package.json LICENSE /home/node/
+
+RUN apk add --no-cache git npm && npm install && apk del git npm
 
 USER node
 
@@ -110,14 +113,6 @@ EOF
 }
 
 source_settings $1
-
-TAG=$(docker version --format '{{.Server.Arch}}')
-
-if [ "$USER" = "" ]; then
-    IMAGE=$NAME
-else
-    IMAGE=$USER/$NAME
-fi
 
 mkdir -p out/$NAME/.reg
 

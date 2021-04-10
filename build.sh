@@ -6,6 +6,7 @@ generate_docker_run() {
     CWD=$(pwd)
     touch out/$NAME/.reg/etc/config.json
     cat << EOF > out/$NAME/.reg/bin/docker_run.sh
+#!/bin/sh
 docker container inspect $NAME > /dev/null 2>&1
 
 if [ \$? -eq 0 ]; then
@@ -13,37 +14,20 @@ if [ \$? -eq 0 ]; then
     docker rm $NAME
 fi
 
-docker run -d --network host --restart unless-stopped --name $NAME -v $CWD/out/$NAME/.reg/etc/config.json:/home/node/config.json $NAME:$TAG
+docker run -d --network host --restart unless-stopped --name $NAME -v $CWD/out/$NAME/.reg/etc/config.json:/home/node/config.json $USER/$NAME:$ARCH
 EOF
     chmod +x out/$NAME/.reg/bin/docker_run.sh
 }
 
-generate_repository_entry() {
-    echo Generating repository.json
-    cat << EOF > out/$NAME/.reg/etc/repository.json
-[{
-    "display_name": "Test",
-    "extensions": [{
-        "author": "$AUTHOR",
-        "display_name": "$FRIENDLY_NAME",
-        "description": "$DESCRIPTION",
-        "image": {
-            "repo": "$USER/$NAME",
-            "tags": {
-                "$TAG": "$TAG"
-            },
-            "binds": [
-                "/home/node/config.json"
-            ]
-        }
-    }]
-}]
-EOF
-}
-
 source_settings $1
 
-TAG=$(docker version --format '{{.Server.Arch}}')
+ARCH=$(docker version --format '{{.Server.Arch}}')
+
+if [ "$ARCH" = "arm" ]; then
+    ARCH=arm32v7
+elif [ "$ARCH" = "arm64" ]; then
+    ARCH=arm64v8
+fi
 
 if [ ! -d "out/$NAME" ]; then
     echo There is no output directory available for $NAME, generate or import the extension first
@@ -55,28 +39,25 @@ if [ ! -f "out/$NAME/Dockerfile" ]; then
     exit 1
 fi
 
+if [ "$USER" = "" ]; then
+    echo There is no USER specified, update your settings file
+    exit 1
+fi
+
 mkdir -p out/$NAME/.reg/{bin,etc}
 
-if [ "$USER" = "" ]; then
-    docker build --rm -t $NAME:$TAG out/$NAME
-    generate_docker_run
-else
-    docker build --rm -t $USER/$NAME:$TAG out/$NAME
-    docker push $USER/$NAME:$TAG
+docker run --rm --privileged multiarch/qemu-user-static:register --reset
+
+declare -a archs=("amd64" "armv7" "arm64")
+declare -a tags=("amd64" "arm32v7" "arm64v8")
+
+for i in "${!archs[@]}"
+do
+    docker build --rm --build-arg build_arch=${archs[$i]} -t $USER/$NAME:${tags[$i]} out/$NAME
+
     if [ $? -gt 0 ]; then
-        echo "Failed to push the image, has the account been setup?"
         exit 1
     fi
+done
 
-    generate_repository_entry
-
-    docker container inspect roon-extension-manager > /dev/null 2>&1
-
-    if [ $? -eq 0 ]; then
-        docker exec roon-extension-manager mkdir -p /home/node/.rem/repos
-        docker cp out/$NAME/.reg/etc/repository.json roon-extension-manager:/home/node/.rem/repos/$NAME.json
-        docker restart roon-extension-manager > /dev/null 2>&1
-    else
-        echo "Warning: No Extension Manager found, no repository file copied"
-    fi
-fi
+generate_docker_run
