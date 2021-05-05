@@ -14,4 +14,15 @@ source_settings() {
     fi
 }
 
+get_tag_and_variant() {
+    if [ "$#" -gt 1 ]; then
+        BASE_TAG=$1-$2
+        VARIANT=$2.
+    elif [ "$#" -gt 0 ]; then
+        BASE_TAG=$1
+    else
+        BASE_TAG=latest
+    fi
+}
+
 echo Roon Extension Generator version $VERSION
