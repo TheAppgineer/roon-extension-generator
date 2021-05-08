@@ -2,13 +2,15 @@
 A generator for Docker based Roon extensions
 
 ## Introduction
-With the release of version 1.0 the Roon Extension Manager moved over to Docker based extension distribution only. This means that npm based extensions have to be converted to Docker images. Although not a very difficult process, this Roon Extension Generator is here to make the transition as easy as possible. It generates the core files for your extension that you then can extend with the required functionality or merge with your existing extension code to create the Docker image. This way converting an extension to a Docker image should be a task of a few hours max.
+With the release of version 1.0 of the Roon Extension Manager it moved over to Docker based extension distribution only. This means that npm based extensions have to be converted to Docker images. Although not a very difficult process, this Roon Extension Generator is here to make the transition as easy as possible. It generates the core files for your extension that you then can extend with the required functionality or merge with your existing extension code to create the Docker image. This way converting an extension to a Docker image should be a task of a few hours max.
 
 ## Installation
 The Extension Generator is a development tool and is used within its git repository, installation is done via cloning:
 
     git clone https://github.com/TheAppgineer/roon-extension-generator.git
     cd roon-extension-generator
+
+The generator has to be installed on an AMD or Intel processor (indicated by the `amd64` architecture in Docker). This is required for the multi architecture creation of images.
 
 ### Importing an existing extension
 If you want to modify or maintain an existing extension then you have to clone the extension in the `out` directory of the Extension Generator:
@@ -24,17 +26,17 @@ The correct operation of the Extension Generator can be verified by building and
 ./build.sh
 out/roon-extension-hello-world/.reg/bin/docker_run.sh
 ```
-If the commands ran successfully then the Hello World extension should appear in the Extensions list within Roon. It is just a displayed name, you cannot do anything with it.
+If the commands ran successfully then the Hello World! extension should appear in the Extensions list within Roon. It is just a displayed name, you cannot do anything with it.
 
 ## Detailed instructions
 The Extension Generator is a set of scripts, each script performs a specific task in creating, building and publishing an extension.
 
 ### The generator
-The generator creates an initial set of source files, providing a Hello World! extension in the form of a Docker image. This initial code base can then be extended with the required functionality. It can also be used on an existing code base to create the necessary source file for the creation of a Docker image.
+The generator creates an initial set of source files, this can then be extended with the required functionality. It can also be used on an existing code base to create the necessary source file for the creation of a Docker image.
 
 The generator is used once for a specific extension, either for the initial creation or for the conversion to a Docker image.
 
-The steps it take for using the generator are:
+The steps it takes for using the generator are:
 * Create a copy of the `settings.sample` file
 
 <p>
@@ -53,31 +55,30 @@ The steps it take for using the generator are:
 
 * Merge the generated code with your existing extension by going through the created changes in your source files
 
-The output is found in the `out/$NAME` directory. A copy of the `settings` file can be found in `out/$NAME/.reg/etc/settings`. It is advised to commit this file to the git repository of your extension, it can then be used for rebuilding the image in case of an update. You use a specific settings file by supplying its path as a parameter to the script you want to run:
+The output is found in the `out/<name>` directory. A copy of the `settings` file can be found in `out/<name>/.reg/settings`. It is advised to commit this file to the git repository of your extension, it can then be used for rebuilding the image in case of an update. You use a specific settings file by supplying the extension name as a parameter to the script you want to run:
 
-    ./<script>.sh out/$NAME/.reg/etc/settings
+    ./<script>.sh <name>
+    ./build.sh roon-extension-hello-world
 
 ### The builder
-The builder creates the Docker image from the sources and publishes it on Docker Hub if the `USER` variable in `settings` is set. Publishing requires a [Docker Hub account](https://hub.docker.com/signup) and you have to be signed it via the Docker daemon:
+The builder creates the Docker images from the sources. The build process is started by running the `build.sh` script, passing the extension name as a parameter:
+
+    ./build.sh <name>
+
+There are images created for the `amd64`, `arm` and `arm64` architectures.
+
+###  The publisher
+The publisher publishes the Docker images on Docker Hub and requires that the `USER` variable is set in `settings`. Publishing requires a [Docker Hub account](https://hub.docker.com/signup) and you have to be signed it via the Docker daemon:
 
     docker login
 
-The build process is started by running the `build.sh` script:
+The images get published by running the `publish.sh` script, passing the extension name as a parameter:
 
-    ./build.sh
+    ./publish.sh <name>
 
-The resulting image if for the CPU architecture of the host system, to support multiple architectures the build script has to be executed once for each required architecture.
+If [Docker Manifest](https://docs.docker.com/engine/reference/commandline/manifest/) support is enabled then a manifest with the `latest` tag will be created. The manifest is an experimental Docker feature that has to be enabled in its `config.json` file, see the linked documentation for more information.
 
-To setup the Extension Generator on a second host you first clone the generator and then clone your extension in the `out` directory of the generator (see [Installation](#installation)). After that you can perform the build.
-
-###  The multi architecture publisher
-After you have published multiple architecture for your image you can create a [Docker Manifest](https://docs.docker.com/engine/reference/commandline/manifest/) to have it installable via a single `latest` tag. The manifest is an experimental Docker feature that has to be enabled in its `config.json` file, see the linked documentation for more information.
-
-The manifest is optional, the Extension Manager doesn't depend on it.
-
-The manifest is created by running the `publish_multi.sh` script, supplying it the location of the settings file and the architectures that should be included additional to the current host architecture (splitted by spaces):
-
-    ./publish_multi.sh out/$NAME/.reg/etc/settings <additional architectures>
+The manifest is optional, the Extension Generator and Extension Manager do not depend on it.
 
 ## Running and testing the image
 If you have set the `USER` variable in `settings` then your extension is now published on Docker Hub. If the variable is kept empty than you can test the local image.
@@ -88,30 +89,7 @@ Install and test your extension via the Extension Manager, you can find it in th
 ### Local image testing
 Run and test your extension by running the generated script:
 
-    out/$NAME/.reg/bin/docker_run.sh
+    out/<name>/.reg/bin/docker_run.sh
 
 ## Inclusion in Extension Repository
-If your extension works as expected then you can integrate the generated repository file `out/$NAME/.reg/etc/repository.json` in your fork of the Extension Repository (v1.x branch) and create a pull request for inclusion.
-
-If you have published an image for multiple architectures, you should specify all these architectures in the repository entry, e.g:
-
-```json
-[{
-    "display_name": "Playback",
-    "extensions": [{
-        "author": "The Appgineer",
-        "display_name": "Queue Bot",
-        "description": "Roon Extension that lets the queue take control",
-        "image": {
-            "repo": "theappgineer/roon-extension-queue-bot",
-            "tags": {
-                "amd64": "amd64",
-                "arm": "arm"
-            },
-            "binds": [
-                "/home/node/config.json"
-            ]
-        }
-    }]
-}]
-```
+If your extension works as expected then you can integrate the generated repository file `out/<name>/.reg/etc/repository.json` in your fork of the Extension Repository (v1.x branch) and create a pull request for inclusion.
