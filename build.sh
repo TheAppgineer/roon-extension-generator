@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# Usage:   ./build.sh [<name> <base-tag> <variant>]
+# Example: ./build.sh roon-extension-manager v1.x standalone
+# Output:  <user>/<name>:<base-tag>-<variant>-<arch>
+
 source common.sh
 
 generate_docker_run() {
@@ -52,12 +57,19 @@ mkdir -p out/$NAME/.reg/{bin,etc}
 
 docker run --rm --privileged multiarch/qemu-user-static:register --reset > /dev/null 2>&1
 
-declare -a archs=("amd64" "armv7" "arm64")
+DISTRO=$(cat out/$NAME/${VARIANT}Dockerfile | grep -m 1 multiarch | cut -f2 -d/ | cut -f1 -d:)
+
+if [ "$DISTRO" = "debian-debootstrap" ]; then
+    declare -a archs=("amd64" "armhf" "arm64")
+else
+    declare -a archs=("amd64" "armv7" "arm64")
+fi
 declare -a tags=("amd64" "arm32v7" "arm64v8")
+declare -a pkg_archs=("x64" "armv6" "arm64")
 
 for i in "${!archs[@]}"
 do
-    docker build --rm --build-arg build_arch=${archs[$i]} -t $USER$NAME:$BASE_TAG-${tags[$i]} -f out/$NAME/${VARIANT}Dockerfile out/$NAME
+    docker build --rm --build-arg build_arch=${archs[$i]} --build-arg pkg_arch=${pkg_archs[$i]} -t $USER$NAME:$BASE_TAG-${tags[$i]} -f out/$NAME/${VARIANT}Dockerfile out/$NAME
 
     if [ $? -gt 0 ]; then
         exit 1

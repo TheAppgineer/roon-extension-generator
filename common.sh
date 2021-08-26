@@ -1,4 +1,4 @@
-VERSION=0.2.0
+VERSION=0.3.0
 
 source_settings() {
     if [ -f "out/$1/.reg/settings" ]; then
