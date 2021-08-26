@@ -29,7 +29,9 @@ RUN apt-get update && \
 # Phase 2: Create the run time image containing the extension binary
 FROM multiarch/debian-debootstrap:${build_arch}-buster-slim
 
-RUN useradd -ms /bin/sh node
+RUN useradd -ms /bin/sh node && \
+    apt-get update && \
+    apt-get install -y libatomic1
 
 WORKDIR /home/node
 
