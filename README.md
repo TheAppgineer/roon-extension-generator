@@ -23,7 +23,7 @@ The correct operation of the Extension Generator can be verified by building and
 
 ```shell
 ./generate.sh
-./build.sh
+./build.sh roon-extension-hello-world
 out/roon-extension-hello-world/.reg/bin/docker_run.sh
 ```
 If the commands ran successfully then the Hello World! extension should appear in the Extensions list within Roon. It is just a displayed name, you cannot do anything with it.
@@ -63,7 +63,13 @@ The output is found in the `out/<name>` directory. A copy of the `settings` file
 ### The builder
 The builder creates the Docker images from the sources. The build process is started by running the `build.sh` script, passing the extension name as a parameter:
 
-    ./build.sh <name>
+    ./build.sh <name> [<base-tag> <variant>]
+
+Optionally you can specify the:
+
+<base-tag>  The base tag that should be given to the built image, default is `latest`. For each architecture this base tag will be extended with the architecture name, e.g. `latest-amd64`.
+
+<variant>   The specific variant of the image to build. Variants use a dedicated Dockerfile that should be available in the source tree. The variant can be part of the path of the Dockerfile (`<variant>/Dockerfile`) or part of the name of the Dockerfile (`<variant>.Dockerfile`).
 
 There are images created for the `amd64`, `arm` and `arm64` architectures.
 
@@ -74,7 +80,9 @@ The publisher publishes the Docker images on Docker Hub and requires that the `U
 
 The images get published by running the `publish.sh` script, passing the extension name as a parameter:
 
-    ./publish.sh <name>
+    ./publish.sh <name> [<base-tag> <variant>]
+
+Optional parameters are equal to those supported by the builder.
 
 If [Docker Manifest](https://docs.docker.com/engine/reference/commandline/manifest/) support is enabled then a manifest with the `latest` tag will be created. The manifest is an experimental Docker feature that has to be enabled in its `config.json` file, see the linked documentation for more information.
 

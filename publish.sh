@@ -27,7 +27,6 @@ EOF
 }
 
 source_settings $1
-get_tag_and_variant $1 $2 $3
 
 if [ "$USER" = "" ]; then
     echo Publishing to Docker Hub requires a USER specified in settings
@@ -39,6 +38,8 @@ declare -a tags=("amd64" "arm32v7" "arm64v8")
 
 for tag in "${tags[@]}"
 do
+    get_tag_and_variant $tag $1 $2 $3
+
     docker push $REPO:$BASE_TAG-$tag
     if [ $? -gt 0 ]; then
         echo "Failed to push the image, has the account been setup?"
@@ -64,7 +65,7 @@ fi
 docker container inspect roon-extension-manager > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     docker exec roon-extension-manager mkdir -p /home/node/.rem/repos
-    docker cp out/$1/.reg/etc/repository.json roon-extension-manager:/home/node/.rem/repos/$NAME.json
+    docker cp out/$1/.reg/etc/repository.json roon-extension-manager:/home/node/.rem/repos/$CONTAINER_NAME.json
     docker restart roon-extension-manager > /dev/null 2>&1
 else
     echo "Warning: Extension Manager not found, repository file not copied"
